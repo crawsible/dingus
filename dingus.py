@@ -92,6 +92,48 @@ class _Patcher:
         setattr(self.module, self.attribute_name, self.original_object)
 
 
+def patch_all(*args):
+    patches = {}
+
+    for patch_requests in args:
+        try:
+            patches.update(patch_requests)
+        except:
+            for object_path in patch_requests:
+                patches[object_path] = NoArgument
+
+    return _PatcherCollection(patches)
+
+
+class _PatcherCollection:
+    def __init__(self, patches):
+        self.patchers = []
+
+        for object_path, new_object in patches.iteritems():
+            self.patchers.append(patch(object_path, new_object))
+
+    def __call__(self, fn):
+        @wraps(fn)
+        def new_fn(*args, **kwargs):
+            for patcher in self.patchers:
+                patcher.patch_object()
+            try:
+                return fn(*args, **kwargs)
+            finally:
+                for patcher in self.patchers:
+                    patcher.restore_object()
+        new_fn.__wrapped__ = fn
+        return new_fn
+
+    def __enter__(self):
+        for patcher in self.patchers:
+            patcher.__enter__()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        for patcher in self.patchers:
+            patcher.__exit__(exc_type, exc_value, traceback)
+
+
 def isolate(object_path):
     def decorator(fn):
         module_name, object_name = object_path.rsplit('.', 1)

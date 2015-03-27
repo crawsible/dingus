@@ -2,10 +2,10 @@ from __future__ import with_statement
 import urllib2
 import os
 
-from dingus import Dingus, patch, isolate
+from dingus import Dingus, patch, patch_all, isolate
 
 
-class WhenPatchingObjects:
+class WhenPatchingAnObject:
     @patch('urllib2.urlopen')
     def should_replace_object_with_dingus(self):
         assert isinstance(urllib2.urlopen, Dingus)
@@ -36,6 +36,47 @@ class WhenPatchingObjects:
             pass
         patch_urllib2 = patch('urllib2.urlopen')(urllib2)
         assert patch_urllib2.__wrapped__ == urllib2
+
+
+class WhenPatchingMultipleObjects:
+    @patch_all(['urllib2.urlopen', 'os.path.exists'])
+    def should_replace_objects_with_dinguses(self):
+        assert isinstance(urllib2.urlopen, Dingus)
+        assert isinstance(os.path.exists, Dingus)
+
+    def should_restore_object_after_patched_function_exits(self):
+        @patch_all(['urllib2.urlopen', 'os.path.exists'])
+        def patch_urllib2():
+            pass
+        patch_urllib2()
+        assert not isinstance(urllib2.urlopen, Dingus)
+        assert not isinstance(os.path.exists, Dingus)
+
+    def should_be_usable_as_context_manager(self):
+        with patch_all(['urllib2.urlopen', 'os.path.exists']):
+            assert isinstance(urllib2.urlopen, Dingus)
+            assert isinstance(os.path.exists, Dingus)
+        assert not isinstance(urllib2.urlopen, Dingus)
+        assert not isinstance(os.path.exists, Dingus)
+
+    def should_be_able_to_provide_explicit_dingus(self):
+        my_dingus = Dingus()
+        my_other_dingus = Dingus()
+        with patch_all({
+            'urllib2.urlopen': my_dingus,
+            'os.path.exists': my_other_dingus
+        }):
+            assert urllib2.urlopen is my_dingus
+            assert os.path.exists is my_other_dingus
+
+    def should_handle_dictionaries_and_lists(self):
+        my_third_dingus = Dingus()
+        with patch_all(
+                ['urllib2.urlopen'],
+                {'os.path.exists': my_third_dingus}
+        ):
+            assert isinstance(urllib2.urlopen, Dingus)
+            assert os.path.exists is my_third_dingus
 
 
 class WhenIsolating:
