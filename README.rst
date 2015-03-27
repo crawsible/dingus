@@ -101,6 +101,40 @@ You can also use this as a decorator on your test methods:
     ...     pass
     ...
 
+`patch_all` allows for patching multiple objects at once. This is especially
+helpful for avoiding nested `with` statements:
+
+    >>> from dingus import patch_all
+    >>> import urllib2
+    >>> import os
+    >>>
+    >>> with patch_all(['urllib2.urlopen', 'os.path.exists']):
+    ...     print urllib2.urlopen.__class__, os.path.exists.__class__
+    ...
+    <class 'dingus.Dingus'> <class 'dingus.Dingus'>
+
+`patch_all` will accept a list or dictionary, or both:
+
+    >>> from dingus import Dingus
+    >>> my_dingus = Dingus()
+    >>>
+    >>> with patch_all(['urllib2.urlopen'], {'os.path.exists': my_dingus}):
+    ...     print urllib2.urlopen
+    <Dingus urllib2.urlopen>
+    ...     print os.path.exists == my_dingus
+    True
+
+Like `patch`, `patch_all` can be used as a decorator:
+
+    >>> @patch_all(['urllib2.urlopen'], {'os.path.exists': my_dingus})
+    ... def test_something():
+    ...     print urllib2.urlopen
+    ...     print os.path.exists == my_dingus
+    ...
+    >>> test_something()
+    <Dingus urllib2.urlopen>
+    True
+
 =========
 ISOLATION
 =========
